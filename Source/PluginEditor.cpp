@@ -15,7 +15,6 @@ const auto backgroundTop = juce::Colour(34u, 35u, 34u);
 const auto backgroundBottom = juce::Colour(11u, 12u, 13u);
 const auto panelTop = juce::Colour(38u, 38u, 36u);
 const auto panelBottom = juce::Colour(18u, 19u, 19u);
-const auto analyzerPurple = juce::Colour(92u, 55u, 145u);
 const auto knobRed = juce::Colour(196u, 34u, 31u);
 const auto knobRedDark = juce::Colour(78u, 12u, 15u);
 const auto amber = juce::Colour(255u, 151u, 24u);
@@ -223,17 +222,21 @@ void LookAndFeel::drawToggleButton(juce::Graphics &g,
     }
     else if( auto* analyzerButton = dynamic_cast<AnalyzerButton*>(&toggleButton) )
     {
-        auto color = ! toggleButton.getToggleState() ? Colours::dimgrey : green;
+        ignoreUnused(analyzerButton);
+        auto active = toggleButton.getToggleState();
+        auto color = active ? green : Colours::dimgrey;
         auto bounds = toggleButton.getLocalBounds();
         auto r = bounds.reduced(2).toFloat();
 
-        g.setColour(Colours::black.withAlpha(0.65f));
-        g.fillRoundedRectangle(r, 4.f);
-        g.setColour(Colours::white.withAlpha(0.28f));
-        g.drawRoundedRectangle(r, 4.f, 1.f);
+        g.setGradientFill(ColourGradient(Colour(38u, 40u, 38u), r.getX(), r.getY(),
+                                         Colour(8u, 9u, 8u), r.getX(), r.getBottom(), false));
+        g.fillRoundedRectangle(r, 5.f);
+        g.setColour(active ? green.withAlpha(0.28f) : Colours::white.withAlpha(0.08f));
+        g.drawRoundedRectangle(r, 5.f, 1.4f);
         
+        g.setFont(Font(13.f, Font::bold));
         g.setColour(color);
-        g.strokePath(analyzerButton->randomPath, PathStrokeType(1.f));
+        g.drawFittedText("BYPASS", bounds, Justification::centred, 1);
     }
 }
 //==============================================================================
@@ -278,8 +281,9 @@ void RotarySliderWithLabels::paint(juce::Graphics &g)
         g.drawLine(Line<float>(inner, outer), i % 4 == 0 ? 1.3f : 0.9f);
     }
     
+    auto compact = getLocalBounds().getHeight() < 112;
     g.setColour(enabled ? green : Colours::grey);
-    g.setFont(Font(getTextHeight(), Font::bold));
+    g.setFont(Font(compact ? 11.f : float(getTextHeight()), Font::bold));
     
     auto numChoices = labels.size();
     for( int i = 0; i < numChoices; ++i )
@@ -290,16 +294,16 @@ void RotarySliderWithLabels::paint(juce::Graphics &g)
         
         auto ang = jmap(pos, 0.f, 1.f, startAng, endAng);
         
-        auto c = center.getPointOnCircumference(radius + getTextHeight() * 1.15f + 12.f, ang);
+        auto c = center.getPointOnCircumference(radius + (compact ? 14.f : getTextHeight() * 1.15f + 12.f), ang);
         
         Rectangle<float> r;
         auto str = labels[i].label;
         r.setSize(
             juce::GlyphArrangement::getStringWidth(g.getCurrentFont(), str),
-            getTextHeight()
+            compact ? 12.f : float(getTextHeight())
         );
         r.setCentre(c);
-        r.setY(r.getY() + 3);
+        r.setY(r.getY() + (compact ? -5.f : 3.f));
         
         g.drawFittedText(str, r.toNearestInt(), juce::Justification::centred, 1);
     }
@@ -310,8 +314,8 @@ juce::Rectangle<int> RotarySliderWithLabels::getSliderBounds() const
 {
     auto bounds = getLocalBounds();
     
-    auto size = juce::jmin(bounds.getWidth() - 58, bounds.getHeight() - getTextHeight() * 3 - 20);
-    size = juce::jmax(36, size);
+    auto size = juce::jmin(bounds.getWidth() - 58, bounds.getHeight() - getTextHeight() * 2 - 10);
+    size = juce::jmax(42, size);
 
     juce::Rectangle<int> r;
     r.setSize(size, size);
@@ -474,14 +478,18 @@ void ResponseCurveComponent::paint (juce::Graphics& g)
         auto leftChannelFFTPath = leftPathProducer.getPath();
         leftChannelFFTPath.applyTransform(AffineTransform().translation(responseArea.getX(), responseArea.getY()));
         
-        g.setColour(analyzerPurple.withAlpha(0.82f));
-        g.strokePath(leftChannelFFTPath, PathStrokeType(1.f));
+        g.setColour(Colour(53u, 192u, 218u).withAlpha(0.26f));
+        g.strokePath(leftChannelFFTPath, PathStrokeType(4.f, PathStrokeType::curved, PathStrokeType::rounded));
+        g.setColour(Colour(97u, 220u, 244u).withAlpha(0.78f));
+        g.strokePath(leftChannelFFTPath, PathStrokeType(1.8f, PathStrokeType::curved, PathStrokeType::rounded));
         
         auto rightChannelFFTPath = rightPathProducer.getPath();
         rightChannelFFTPath.applyTransform(AffineTransform().translation(responseArea.getX(), responseArea.getY()));
         
-        g.setColour(gold.withAlpha(0.78f));
-        g.strokePath(rightChannelFFTPath, PathStrokeType(1.f));
+        g.setColour(gold.withAlpha(0.24f));
+        g.strokePath(rightChannelFFTPath, PathStrokeType(3.6f, PathStrokeType::curved, PathStrokeType::rounded));
+        g.setColour(gold.withAlpha(0.66f));
+        g.strokePath(rightChannelFFTPath, PathStrokeType(1.5f, PathStrokeType::curved, PathStrokeType::rounded));
     }
     
     g.setColour(Colours::white);
@@ -923,8 +931,8 @@ void SimpleEQAudioProcessorEditor::paint(juce::Graphics &g)
     {
         auto r = slider.getBounds();
         r.setY(r.getBottom() - 19);
-        r.setHeight(18);
-        g.setFont(Font(15.f, Font::plain));
+        r.setHeight(16);
+        g.setFont(Font(13.f, Font::plain));
         g.setColour(Colours::lightgrey.withAlpha(0.86f));
         g.drawFittedText(text, r, Justification::centred, 1);
     };
@@ -943,18 +951,18 @@ void SimpleEQAudioProcessorEditor::resized()
     auto bounds = getLocalBounds().reduced(20, 16);
     auto header = bounds.removeFromTop(54);
 
-    auto analyzerButtonArea = header.removeFromLeft(92).reduced(10, 8);
+    auto analyzerButtonArea = header.removeFromLeft(124).reduced(10, 8);
     analyzerEnabledButton.setBounds(analyzerButtonArea);
 
     bounds.removeFromTop(16);
-    responseCurveComponent.setBounds(bounds.removeFromTop(180).reduced(46, 18));
+    responseCurveComponent.setBounds(bounds.removeFromTop(164).reduced(46, 18));
 
     bounds.removeFromTop(22);
     auto controls = bounds.reduced(8, 8);
 
     auto lowCutArea = controls.removeFromLeft(controls.getWidth() * 0.32f).reduced(18, 0);
     auto highCutArea = controls.removeFromRight(controls.getWidth() * 0.47f).reduced(18, 0);
-    auto peakArea = controls.reduced(34, 0);
+    auto peakArea = controls.reduced(26, 0);
 
     auto buttonSize = 38;
     lowcutBypassButton.setBounds(lowCutArea.removeFromTop(buttonSize).withSizeKeepingCentre(buttonSize, buttonSize));
@@ -971,9 +979,9 @@ void SimpleEQAudioProcessorEditor::resized()
     highCutFreqSlider.setBounds(highCutArea.removeFromTop(highCutArea.getHeight() * 0.5f).reduced(8, 0));
     highCutSlopeSlider.setBounds(highCutArea.reduced(8, 0));
 
-    peakFreqSlider.setBounds(peakArea.removeFromTop(peakArea.getHeight() * 0.34f).reduced(18, 0));
-    peakGainSlider.setBounds(peakArea.removeFromTop(peakArea.getHeight() * 0.5f).reduced(24, 0));
-    peakQualitySlider.setBounds(peakArea.reduced(34, 0));
+    peakFreqSlider.setBounds(peakArea.removeFromTop(peakArea.getHeight() / 3).reduced(14, 0));
+    peakGainSlider.setBounds(peakArea.removeFromTop(peakArea.getHeight() / 2).reduced(18, 0));
+    peakQualitySlider.setBounds(peakArea.reduced(24, 0));
 }
 
 std::vector<juce::Component*> SimpleEQAudioProcessorEditor::getComps()
